@@ -46,9 +46,6 @@ type Dialect interface {
 
 	// CurrentDatabase return current database name
 	CurrentDatabase() string
-
-	//
-	IsDisconnectError(err error) bool
 }
 
 var dialectsMap = map[string]Dialect{}

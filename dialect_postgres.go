@@ -1,7 +1,6 @@
 package gorm
 
 import (
-	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -19,9 +18,6 @@ func init() {
 
 func (postgres) GetName() string {
 	return "postgres"
-}
-func (postgres) IsDisconnectError(err error) bool {
-	return err == driver.ErrBadConn
 }
 
 func (postgres) BindVar(i int) string {

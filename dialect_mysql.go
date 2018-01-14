@@ -2,9 +2,7 @@ package gorm
 
 import (
 	"crypto/sha1"
-	"database/sql/driver"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -13,28 +11,24 @@ import (
 	"unicode/utf8"
 )
 
-type mysqlDialect struct {
+type mysql struct {
 	commonDialect
 }
 
 func init() {
-	RegisterDialect("mysql", &mysqlDialect{})
+	RegisterDialect("mysql", &mysql{})
 }
 
-func (mysqlDialect) IsDisconnectError(err error) bool {
-	return err == mysql.ErrInvalidConn || err == driver.ErrBadConn
-}
-
-func (mysqlDialect) GetName() string {
+func (mysql) GetName() string {
 	return "mysql"
 }
 
-func (mysqlDialect) Quote(key string) string {
+func (mysql) Quote(key string) string {
 	return fmt.Sprintf("`%s`", key)
 }
 
 // Get Data Type for MySQL Dialect
-func (s *mysqlDialect) DataTypeOf(field *StructField) string {
+func (s *mysql) DataTypeOf(field *StructField) string {
 	var dataValue, sqlType, size, additionalType = ParseFieldStructForDialect(field, s)
 
 	// MySQL allows only one auto increment column per table, and it must
@@ -128,12 +122,12 @@ func (s *mysqlDialect) DataTypeOf(field *StructField) string {
 	return fmt.Sprintf("%v %v", sqlType, additionalType)
 }
 
-func (s mysqlDialect) RemoveIndex(tableName string, indexName string) error {
+func (s mysql) RemoveIndex(tableName string, indexName string) error {
 	_, err := s.db.Exec(fmt.Sprintf("DROP INDEX %v ON %v", indexName, s.Quote(tableName)))
 	return err
 }
 
-func (s mysqlDialect) LimitAndOffsetSQL(limit, offset interface{}) (sql string) {
+func (s mysql) LimitAndOffsetSQL(limit, offset interface{}) (sql string) {
 	if limit != nil {
 		if parsedLimit, err := strconv.ParseInt(fmt.Sprint(limit), 0, 0); err == nil && parsedLimit >= 0 {
 			sql += fmt.Sprintf(" LIMIT %d", parsedLimit)
@@ -148,22 +142,22 @@ func (s mysqlDialect) LimitAndOffsetSQL(limit, offset interface{}) (sql string) 
 	return
 }
 
-func (s mysqlDialect) HasForeignKey(tableName string, foreignKeyName string) bool {
+func (s mysql) HasForeignKey(tableName string, foreignKeyName string) bool {
 	var count int
 	s.db.QueryRow("SELECT count(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=? AND TABLE_NAME=? AND CONSTRAINT_NAME=? AND CONSTRAINT_TYPE='FOREIGN KEY'", s.CurrentDatabase(), tableName, foreignKeyName).Scan(&count)
 	return count > 0
 }
 
-func (s mysqlDialect) CurrentDatabase() (name string) {
+func (s mysql) CurrentDatabase() (name string) {
 	s.db.QueryRow("SELECT DATABASE()").Scan(&name)
 	return
 }
 
-func (mysqlDialect) SelectFromDummyTable() string {
+func (mysql) SelectFromDummyTable() string {
 	return "FROM DUAL"
 }
 
-func (s mysqlDialect) BuildForeignKeyName(tableName, field, dest string) string {
+func (s mysql) BuildForeignKeyName(tableName, field, dest string) string {
 	keyName := s.commonDialect.BuildForeignKeyName(tableName, field, dest)
 	if utf8.RuneCountInString(keyName) <= 64 {
 		return keyName

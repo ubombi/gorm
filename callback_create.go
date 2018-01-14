@@ -50,8 +50,6 @@ func updateTimeStampForCreateCallback(scope *Scope) {
 // createCallback the callback used to insert data into database
 func createCallback(scope *Scope) {
 	if !scope.HasError() {
-		scope.db.reconnectGuard.Wait()
-
 		defer scope.trace(NowFunc())
 
 		var (

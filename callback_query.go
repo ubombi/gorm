@@ -16,7 +16,6 @@ func init() {
 // queryCallback used to query data from database
 func queryCallback(scope *Scope) {
 	defer scope.trace(NowFunc())
-	scope.db.reconnectGuard.Wait()
 
 	var (
 		isSlice, isPtr bool
