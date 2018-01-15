@@ -3,6 +3,7 @@ package reconnect
 import (
 	"database/sql/driver"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -13,6 +14,7 @@ var _ gorm.PluginInterface = &Reconnect{}
 // Reconnect GORM reconnect plugin
 type Reconnect struct {
 	Config *Config
+	mutex  *sync.Mutex
 }
 
 // Config reconnect config
@@ -48,6 +50,7 @@ func New(config *Config) *Reconnect {
 	}
 
 	return &Reconnect{
+		mutex:  &sync.Mutex{},
 		Config: config,
 	}
 }
@@ -65,19 +68,25 @@ func (reconnect *Reconnect) Apply(db *gorm.DB) {
 func (reconnect *Reconnect) generateCallback(callbackType string) func(*gorm.Scope) {
 	return func(scope *gorm.Scope) {
 		if scope.HasError() {
-			db := scope.DB()
-			if reconnect.Config.BadConnChecker(db.GetErrors()) {
-				var connected bool
-				for i := 0; i < reconnect.Config.Attempts; i++ {
-					if err := reconnect.reconnectDB(db); err == nil {
-						connected = true
-						break
+			if db := scope.DB(); reconnect.Config.BadConnChecker(db.GetErrors()) {
+				reconnect.mutex.Lock()
+
+				connected := db.DB().Ping() == nil
+
+				if !connected {
+					for i := 0; i < reconnect.Config.Attempts; i++ {
+						if err := reconnect.reconnectDB(db); err == nil {
+							connected = true
+							break
+						}
+						time.Sleep(reconnect.Config.Interval)
 					}
-					time.Sleep(reconnect.Config.Interval)
 				}
 
+				reconnect.mutex.Unlock()
+
 				if connected {
-					// FIXME reexec current command
+					// TODO reexec current command
 				}
 			}
 		}
