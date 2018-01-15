@@ -57,15 +57,15 @@ func New(config *Config) *Reconnect {
 
 // Apply apply reconnect to GORM DB instance
 func (reconnect *Reconnect) Apply(db *gorm.DB) {
-	db.Callback().Create().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback("creates"))
-	db.Callback().Update().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback("updates"))
-	db.Callback().Delete().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback("deletes"))
-	db.Callback().Query().After("gorm:query").Register("gorm:plugins:reconnect", reconnect.generateCallback("queries"))
-	db.Callback().RowQuery().After("gorm:row_query").Register("gorm:plugins:reconnect", reconnect.generateCallback("rowQueries"))
+	db.Callback().Create().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.CreateCallback))
+	db.Callback().Update().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.UpdateCallback))
+	db.Callback().Delete().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.DeleteCallback))
+	db.Callback().Query().After("gorm:query").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.QueryCallback))
+	db.Callback().RowQuery().After("gorm:row_query").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.RowQueryCallback))
 }
 
 //performReconnect the callback used to peform some reconnect attempts in case of disconnect
-func (reconnect *Reconnect) generateCallback(callbackType string) func(*gorm.Scope) {
+func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) func(*gorm.Scope) {
 	return func(scope *gorm.Scope) {
 		if scope.HasError() {
 			if db := scope.DB(); reconnect.Config.BadConnChecker(db.GetErrors()) {
@@ -86,7 +86,7 @@ func (reconnect *Reconnect) generateCallback(callbackType string) func(*gorm.Sco
 				reconnect.mutex.Unlock()
 
 				if connected {
-					// TODO reexec current command
+					scope.CallCallbacks(callbackType)
 				}
 			}
 		}
