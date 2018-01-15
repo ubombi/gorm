@@ -12,6 +12,7 @@ import (
 
 func TestReconnect(t *testing.T) {
 	DB, err := tests.OpenTestConnection()
+	DB.DB().SetConnMaxLifetime(24 * time.Hour)
 	DB.Use(reconnect.New(nil))
 
 	if err != nil {
@@ -19,9 +20,14 @@ func TestReconnect(t *testing.T) {
 	}
 
 	for {
-		fmt.Println("111")
 		var user User
-		fmt.Println(DB.Find(&user))
+
+		if err := DB.Find(&user).Error; err == nil {
+			fmt.Printf("Found user's ID: %v\n", user.ID)
+		} else {
+			fmt.Printf("DB Query Err: %v\n", err)
+		}
+
 		time.Sleep(time.Second)
 	}
 }
