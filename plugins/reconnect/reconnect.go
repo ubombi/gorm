@@ -2,6 +2,7 @@ package reconnect
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ func New(config *Config) *Reconnect {
 	if config.BadConnChecker == nil {
 		config.BadConnChecker = func(errors []error) bool {
 			for _, err := range errors {
-				if err == driver.ErrBadConn {
+				if err == driver.ErrBadConn || err.Error() == "invalid connection" /* for mysql */ {
 					return true
 				}
 			}
@@ -75,7 +76,8 @@ func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) fun
 
 				if !connected {
 					for i := 0; i < reconnect.Config.Attempts; i++ {
-						if err := reconnect.reconnectDB(db); err == nil {
+						fmt.Printf("reconnecting db %v...\n", i)
+						if err := reconnect.reconnectDB(scope); err == nil {
 							connected = true
 							break
 						}
@@ -93,14 +95,16 @@ func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) fun
 	}
 }
 
-func (reconnect *Reconnect) reconnectDB(db *gorm.DB) error {
+func (reconnect *Reconnect) reconnectDB(scope *gorm.Scope) error {
 	var (
+		db         = scope.DB()
 		sqlDB      = db.DB()
 		dsn        = reflect.Indirect(reflect.ValueOf(sqlDB)).FieldByName("dsn").String()
 		newDB, err = gorm.Open(db.Dialect().GetName(), dsn)
 	)
 
 	if err == nil {
+		db.Error = nil
 		*sqlDB = *newDB.DB()
 	}
 

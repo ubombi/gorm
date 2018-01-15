@@ -31,7 +31,7 @@ func OpenTestConnection() (db *gorm.DB, err error) {
 		if dbhost != "" {
 			dbhost = fmt.Sprintf("host=%v ", dbhost)
 		}
-		db, err = gorm.Open("postgres", fmt.Sprintf("%vuser=gorm password=gorm DB.name=gorm sslmode=disable", dbhost))
+		db, err = gorm.Open("postgres", fmt.Sprintf("%v user=gorm password=gorm DB.name=gorm sslmode=disable", dbhost))
 	case "foundation":
 		fmt.Println("testing foundation...")
 		db, err = gorm.Open("foundation", "dbname=gorm port=15432 sslmode=disable")

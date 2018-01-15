@@ -22,11 +22,13 @@ func TestReconnect(t *testing.T) {
 	for {
 		var user User
 
-		if err := DB.Find(&user).Error; err == nil {
-			fmt.Printf("Found user's ID: %v\n", user.ID)
-		} else {
-			fmt.Printf("DB Query Err: %v\n", err)
-		}
+		go func() {
+			if err := DB.Find(&user).Error; err == nil {
+				fmt.Printf("Found user's ID: %v\n", user.ID)
+			} else {
+				fmt.Printf("DB Query Err: %v\n", err)
+			}
+		}()
 
 		time.Sleep(time.Second)
 	}
