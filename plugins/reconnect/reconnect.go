@@ -15,7 +15,7 @@ var _ gorm.PluginInterface = &Reconnect{}
 // Reconnect GORM reconnect plugin
 type Reconnect struct {
 	Config *Config
-	mutex  *sync.Mutex
+	mutex  sync.Mutex
 }
 
 // Config reconnect config
@@ -52,21 +52,25 @@ func New(config *Config) *Reconnect {
 	}
 
 	return &Reconnect{
-		mutex:  &sync.Mutex{},
+		mutex:  sync.Mutex{},
 		Config: config,
 	}
 }
 
 // Apply apply reconnect to GORM DB instance
 func (reconnect *Reconnect) Apply(db *gorm.DB) {
-	db.Callback().Create().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.CreateCallback))
-	db.Callback().Update().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.UpdateCallback))
-	db.Callback().Delete().After("gorm:commit_or_rollback_transaction").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.DeleteCallback))
-	db.Callback().Query().After("gorm:query").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.QueryCallback))
-	db.Callback().RowQuery().After("gorm:row_query").Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.RowQueryCallback))
+	db.Callback().Create().After("gorm:commit_or_rollback_transaction").
+		Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.CreateCallback))
+	db.Callback().Update().After("gorm:commit_or_rollback_transaction").
+		Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.UpdateCallback))
+	db.Callback().Delete().After("gorm:commit_or_rollback_transaction").
+		Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.DeleteCallback))
+	db.Callback().Query().After("gorm:query").
+		Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.QueryCallback))
+	db.Callback().RowQuery().After("gorm:row_query").
+		Register("gorm:plugins:reconnect", reconnect.generateCallback(gorm.RowQueryCallback))
 }
 
-//performReconnect the callback used to peform some reconnect attempts in case of disconnect
 func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) func(*gorm.Scope) {
 	return func(scope *gorm.Scope) {
 		if scope.HasError() {
