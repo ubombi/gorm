@@ -2,8 +2,8 @@ package reconnect
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"reflect"
+	"regexp"
 	"sync"
 	"time"
 
@@ -32,9 +32,10 @@ func New(config *Config) *Reconnect {
 	}
 
 	if config.BadConnChecker == nil {
+		badConnectRegexp := regexp.MustCompile("(getsockopt: connection refused|invalid connection)$")
 		config.BadConnChecker = func(errors []error) bool {
 			for _, err := range errors {
-				if err == driver.ErrBadConn || err.Error() == "invalid connection" /* for mysql */ {
+				if err == driver.ErrBadConn || badConnectRegexp.MatchString(err.Error()) /* for mysql */ {
 					return true
 				}
 			}
@@ -76,7 +77,6 @@ func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) fun
 
 				if !connected {
 					for i := 0; i < reconnect.Config.Attempts; i++ {
-						fmt.Printf("reconnecting db %v...\n", i)
 						if err := reconnect.reconnectDB(scope); err == nil {
 							connected = true
 							break
@@ -88,6 +88,9 @@ func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) fun
 				reconnect.mutex.Unlock()
 
 				if connected {
+					value := scope.ParentDB().New()
+					value.Value = scope.Value
+					*scope.DB() = *value
 					scope.CallCallbacks(callbackType)
 				}
 			}
@@ -97,11 +100,13 @@ func (reconnect *Reconnect) generateCallback(callbackType gorm.CallbackType) fun
 
 func (reconnect *Reconnect) reconnectDB(scope *gorm.Scope) error {
 	var (
-		db         = scope.DB()
+		db         = scope.ParentDB()
 		sqlDB      = db.DB()
 		dsn        = reflect.Indirect(reflect.ValueOf(sqlDB)).FieldByName("dsn").String()
 		newDB, err = gorm.Open(db.Dialect().GetName(), dsn)
 	)
+
+	err = newDB.DB().Ping()
 
 	if err == nil {
 		db.Error = nil

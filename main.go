@@ -277,7 +277,7 @@ func (s *DB) First(out interface{}, where ...interface{}) *DB {
 	newScope := s.clone().NewScope(out)
 	newScope.Search.Limit(1)
 	return newScope.Set("gorm:order_by_primary_key", "ASC").
-		inlineCondition(where...).CallCallbacks(QueryCallback).db
+		inlineCondition(where...).CallCallbacks(QueryCallback)
 }
 
 // Last find last record that match given conditions, order by primary key
@@ -285,17 +285,17 @@ func (s *DB) Last(out interface{}, where ...interface{}) *DB {
 	newScope := s.clone().NewScope(out)
 	newScope.Search.Limit(1)
 	return newScope.Set("gorm:order_by_primary_key", "DESC").
-		inlineCondition(where...).CallCallbacks(QueryCallback).db
+		inlineCondition(where...).CallCallbacks(QueryCallback)
 }
 
 // Find find records that match given conditions
 func (s *DB) Find(out interface{}, where ...interface{}) *DB {
-	return s.clone().NewScope(out).inlineCondition(where...).CallCallbacks(QueryCallback).db
+	return s.clone().NewScope(out).inlineCondition(where...).CallCallbacks(QueryCallback)
 }
 
 // Scan scan value to a struct
 func (s *DB) Scan(dest interface{}) *DB {
-	return s.clone().NewScope(s.Value).Set("gorm:query_destination", dest).CallCallbacks(QueryCallback).db
+	return s.clone().NewScope(s.Value).Set("gorm:query_destination", dest).CallCallbacks(QueryCallback)
 }
 
 // Row return `*sql.Row` with given conditions
@@ -363,9 +363,9 @@ func (s *DB) FirstOrCreate(out interface{}, where ...interface{}) *DB {
 		if !result.RecordNotFound() {
 			return result
 		}
-		return c.NewScope(out).inlineCondition(where...).initialize().CallCallbacks(CreateCallback).db
+		return c.NewScope(out).inlineCondition(where...).initialize().CallCallbacks(CreateCallback)
 	} else if len(c.search.assignAttrs) > 0 {
-		return c.NewScope(out).InstanceSet("gorm:update_interface", c.search.assignAttrs).CallCallbacks(UpdateCallback).db
+		return c.NewScope(out).InstanceSet("gorm:update_interface", c.search.assignAttrs).CallCallbacks(UpdateCallback)
 	}
 	return c
 }
@@ -380,7 +380,7 @@ func (s *DB) Updates(values interface{}, ignoreProtectedAttrs ...bool) *DB {
 	return s.clone().NewScope(s.Value).
 		Set("gorm:ignore_protected_attrs", len(ignoreProtectedAttrs) > 0).
 		InstanceSet("gorm:update_interface", values).
-		CallCallbacks(UpdateCallback).db
+		CallCallbacks(UpdateCallback)
 }
 
 // UpdateColumn update attributes without callbacks, refer: https://jinzhu.github.io/gorm/crud.html#update
@@ -394,31 +394,31 @@ func (s *DB) UpdateColumns(values interface{}) *DB {
 		Set("gorm:update_column", true).
 		Set("gorm:save_associations", false).
 		InstanceSet("gorm:update_interface", values).
-		CallCallbacks(UpdateCallback).db
+		CallCallbacks(UpdateCallback)
 }
 
 // Save update value in database, if the value doesn't have primary key, will insert it
 func (s *DB) Save(value interface{}) *DB {
 	scope := s.clone().NewScope(value)
 	if !scope.PrimaryKeyZero() {
-		newDB := scope.CallCallbacks(UpdateCallback).db
+		newDB := scope.CallCallbacks(UpdateCallback)
 		if newDB.Error == nil && newDB.RowsAffected == 0 {
 			return s.New().FirstOrCreate(value)
 		}
 		return newDB
 	}
-	return scope.CallCallbacks(CreateCallback).db
+	return scope.CallCallbacks(CreateCallback)
 }
 
 // Create insert the value into database
 func (s *DB) Create(value interface{}) *DB {
 	scope := s.clone().NewScope(value)
-	return scope.CallCallbacks(CreateCallback).db
+	return scope.CallCallbacks(CreateCallback)
 }
 
 // Delete delete value match given conditions, if the value has primary key, then will including the primary key as condition
 func (s *DB) Delete(value interface{}, where ...interface{}) *DB {
-	return s.clone().NewScope(value).inlineCondition(where...).CallCallbacks(DeleteCallback).db
+	return s.clone().NewScope(value).inlineCondition(where...).CallCallbacks(DeleteCallback)
 }
 
 // Raw use raw sql as conditions, won't run it unless invoked by other methods

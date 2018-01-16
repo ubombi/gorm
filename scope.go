@@ -57,6 +57,11 @@ func (scope *Scope) NewDB() *DB {
 	return nil
 }
 
+// ParentDB create a new DB without search information, current transaction
+func (scope *Scope) ParentDB() *DB {
+	return scope.db.parent
+}
+
 // SQLDB return *sql.DB
 func (scope *Scope) SQLDB() SQLCommon {
 	return scope.db.db
@@ -827,7 +832,13 @@ func (scope *Scope) inlineCondition(values ...interface{}) *Scope {
 }
 
 // CallCallbacks call callbacks
-func (scope *Scope) CallCallbacks(ct CallbackType) *Scope {
+func (scope *Scope) CallCallbacks(ct CallbackType) *DB {
+	defer func() {
+		if r := recover(); r != nil {
+			scope.Err(errors.New(fmt.Sprint(r)))
+		}
+	}()
+
 	var callbacks []*func(*Scope)
 
 	switch ct {
@@ -849,7 +860,8 @@ func (scope *Scope) CallCallbacks(ct CallbackType) *Scope {
 			break
 		}
 	}
-	return scope
+
+	return scope.db
 }
 
 func convertInterfaceToMap(values interface{}, withIgnoredField bool) map[string]interface{} {

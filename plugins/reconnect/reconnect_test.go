@@ -23,7 +23,12 @@ func TestReconnect(t *testing.T) {
 		var user User
 
 		go func() {
-			if err := DB.Find(&user).Error; err == nil {
+			result := DB.Find(&user)
+			if result == nil {
+				fmt.Println("db is nil")
+				fmt.Printf("%#v \n", result)
+			}
+			if result != nil && result.Error == nil {
 				fmt.Printf("Found user's ID: %v\n", user.ID)
 			} else {
 				fmt.Printf("DB Query Err: %v\n", err)
