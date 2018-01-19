@@ -104,9 +104,9 @@ func autoPreload(scope *Scope) {
 	}
 }
 
-func (scope *Scope) generatePreloadDBWithConditions(conditions []interface{}) (*DB, []interface{}) {
+func (scope *Scope) generatePreloadDBWithConditions(preloadDB *DB, conditions []interface{}) (*DB, []interface{}) {
 	var (
-		preloadDB         = scope.NewDB()
+		//preloadDB         = scope.NewDB()
 		preloadConditions []interface{}
 	)
 
@@ -131,9 +131,6 @@ func (scope *Scope) handleHasOnePreload(field *Field, conditions []interface{}) 
 		return
 	}
 
-	// preload conditions
-	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
-
 	// find relations
 	query := fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys))
 	values := toQueryValues(primaryKeys)
@@ -142,8 +139,12 @@ func (scope *Scope) handleHasOnePreload(field *Field, conditions []interface{}) 
 		values = append(values, relation.PolymorphicValue)
 	}
 
+	// preload conditions
+	preloadDB := scope.NewDB().Where(query, values...)
+	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(preloadDB, conditions)
+
 	results := makeSlice(field.Struct.Type)
-	scope.Err(preloadDB.Where(query, values...).Find(results, preloadConditions...).Error)
+	scope.Err(preloadDB.Find(results, preloadConditions...).Error)
 
 	// assign find results
 	var (
@@ -180,9 +181,6 @@ func (scope *Scope) handleHasManyPreload(field *Field, conditions []interface{})
 		return
 	}
 
-	// preload conditions
-	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
-
 	// find relations
 	query := fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys))
 	values := toQueryValues(primaryKeys)
@@ -190,6 +188,10 @@ func (scope *Scope) handleHasManyPreload(field *Field, conditions []interface{})
 		query += fmt.Sprintf(" AND %v = ?", scope.Quote(relation.PolymorphicDBName))
 		values = append(values, relation.PolymorphicValue)
 	}
+
+	// preload conditions
+	preloadDB := scope.NewDB()
+	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(preloadDB, conditions)
 
 	results := makeSlice(field.Struct.Type)
 	scope.Err(preloadDB.Where(query, values...).Find(results, preloadConditions...).Error)
@@ -227,14 +229,15 @@ func (scope *Scope) handleHasManyPreload(field *Field, conditions []interface{})
 func (scope *Scope) handleBelongsToPreload(field *Field, conditions []interface{}) {
 	relation := field.Relationship
 
-	// preload conditions
-	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
-
 	// get relations's primary keys
 	primaryKeys := scope.getColumnAsArray(relation.ForeignFieldNames, scope.Value)
 	if len(primaryKeys) == 0 {
 		return
 	}
+
+	// preload conditions
+	preloadDB := scope.NewDB()
+	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(preloadDB, conditions)
 
 	// find relations
 	results := makeSlice(field.Struct.Type)
@@ -285,7 +288,8 @@ func (scope *Scope) handleManyToManyPreload(field *Field, conditions []interface
 	}
 
 	// preload conditions
-	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
+	preloadDB := scope.NewDB()
+	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(preloadDB, conditions)
 
 	// generate query with join table
 	newScope := scope.New(reflect.New(fieldType).Interface())
